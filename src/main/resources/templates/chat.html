@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sombra Confluence Chat</title>
+    <link rel="stylesheet" th:href="@{/css/chat.css}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="chat-container">
+        <header class="chat-header">
+            <div class="header-content">
+                <i class="fas fa-comments"></i>
+                <h1>Sombra Confluence Chat</h1>
+                <div class="status-indicator">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span class="status-text" id="statusText">Connecting...</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="chat-main">
+            <div class="chat-messages" id="chatMessages">
+                <div class="welcome-message">
+                    <div class="message bot-message">
+                        <div class="message-avatar">
+                            <i class="fas fa-dice"></i>
+                        </div>
+                        <div class="message-content">
+                            <div class="message-text">
+                                Welcome to Sombra Confluence Chat! I can help you find information from your Confluence documentation.
+                            </div>
+                            <div class="message-time" th:text="${#temporals.format(#temporals.createNow(), 'HH:mm')}"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="typing-indicator" id="typingIndicator" style="display: none;">
+                <div class="message bot-message">
+                    <div class="message-avatar">
+                        <i class="fas fa-dice"></i>
+                    </div>
+                    <div class="message-content">
+                        <div class="typing-dots">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input-container">
+            <div class="relevant-docs" id="relevantDocs" style="display: none;">
+                <div class="docs-header">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Relevant Documents:</span>
+                </div>
+                <div class="docs-list" id="docsList"></div>
+            </div>
+            
+            <form class="chat-input-form" id="chatForm">
+                <div class="input-wrapper">
+                    <textarea 
+                        id="messageInput" 
+                        placeholder="How can I help you today?"
+                        rows="1"
+                        maxlength="1000"></textarea>
+                    <div class="input-actions">
+                        <button type="button" id="docsBtn" class="docs-button" title="Show relevant documents">
+                            <i class="fas fa-file-search"></i>
+                        </button>
+                        <button type="submit" id="sendBtn" class="send-button" title="Send message">
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="error-toast" id="errorToast">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span id="errorMessage"></span>
+        <button class="close-toast" onclick="hideErrorToast()">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
+    <script th:src="@{/js/chat.js}"></script>
+</body>
+</html>

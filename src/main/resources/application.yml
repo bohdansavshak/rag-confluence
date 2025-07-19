@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: rag-confluence
+  datasource:
+    url: jdbc:postgresql://localhost:5432/confluence_embeddings
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  ai:
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        model: llama3.2
+      embedding:
+        model: nomic-embed-text
+    vectorstore:
+      pgvector:
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 768
+
+confluence:
+  base-url: ${CONFLUENCE_BASE_URL}
+  username: ${CONFLUENCE_USERNAME}
+  password: ${CONFLUENCE_PASS}
+#  space-keys: SPACE1,SPACE2  # Optional: specific spaces to index
