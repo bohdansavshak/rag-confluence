@@ -8,7 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import reactor.core.publisher.Flux;
+import org.springframework.http.codec.ServerSentEvent;
 
 import java.util.List;
 import java.util.Map;
@@ -55,37 +56,34 @@ public class ChatController {
     }
 
     @GetMapping(value = "/ask-stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter askQuestionStream(@RequestParam String question) {
-        SseEmitter emitter = new SseEmitter(30000L); // 30 second timeout
-        
+    public Flux<ServerSentEvent<Object>> askQuestionStream(@RequestParam String question) {
         try {
             logger.info("Received streaming chat question: {}", question);
             
             if (question == null || question.trim().isEmpty()) {
-                emitter.send(SseEmitter.event()
-                    .name("error")
-                    .data(Map.of("message", "Question cannot be empty")));
-                emitter.complete();
-                return emitter;
+                return Flux.just(ServerSentEvent.builder()
+                        .event("error")
+                        .data(Map.of("message", "Question cannot be empty"))
+                        .build());
             }
             
-            // Process streaming response asynchronously
-            ragService.chatWithSourcesStream(question, emitter);
+            // Process streaming response using reactive approach
+            return ragService.chatWithSourcesStream(question)
+                    .onErrorResume(error -> {
+                        logger.error("Error processing streaming chat question: {}", error.getMessage(), error);
+                        return Flux.just(ServerSentEvent.builder()
+                                .event("error")
+                                .data(Map.of("message", "Failed to process question: " + error.getMessage()))
+                                .build());
+                    });
             
         } catch (Exception e) {
-            logger.error("Error processing streaming chat question: {}", e.getMessage(), e);
-            try {
-                emitter.send(SseEmitter.event()
-                    .name("error")
-                    .data(Map.of("message", "Failed to process question: " + e.getMessage())));
-                emitter.complete();
-            } catch (Exception sendError) {
-                logger.error("Error sending error message: {}", sendError.getMessage());
-                emitter.completeWithError(sendError);
-            }
+            logger.error("Error setting up streaming chat question: {}", e.getMessage(), e);
+            return Flux.just(ServerSentEvent.builder()
+                    .event("error")
+                    .data(Map.of("message", "Failed to process question: " + e.getMessage()))
+                    .build());
         }
-        
-        return emitter;
     }
 
     @PostMapping("/relevant-docs")

@@ -15,7 +15,8 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import reactor.core.publisher.Flux;
+import org.springframework.http.codec.ServerSentEvent;
 
 import java.util.List;
 import java.util.Map;
@@ -146,8 +147,8 @@ public class RagService {
         }
     }
 
-    public void chatWithSourcesStream(String userQuestion, SseEmitter emitter) {
-        CompletableFuture.runAsync(() -> {
+    public Flux<ServerSentEvent<Object>> chatWithSourcesStream(String userQuestion) {
+        return Flux.create(sink -> {
             try {
                 logger.info("Processing streaming chat question with sources: {}", userQuestion);
                 
@@ -164,9 +165,10 @@ public class RagService {
                         .collect(Collectors.toList());
 
                 // Send source pages first
-                emitter.send(SseEmitter.event()
-                        .name("sources")
-                        .data(Map.of("sourcePages", sourcePages)));
+                sink.next(ServerSentEvent.builder()
+                        .event("sources")
+                        .data(Map.of("sourcePages", sourcePages))
+                        .build());
 
                 // Generate streaming response
                 String userConversationId = "001";
@@ -189,54 +191,41 @@ public class RagService {
                         .stream()
                         .content()
                         .doOnNext(content -> {
-                            try {
-                                if (content != null && !content.isEmpty()) {
-                                    fullResponse.append(content);
-                                    // Send each chunk as it arrives
-                                    emitter.send(SseEmitter.event()
-                                            .name("chunk")
-                                            .data(Map.of("content", content)));
-                                }
-                            } catch (Exception e) {
-                                logger.error("Error sending chunk: {}", e.getMessage(), e);
+                            if (content != null && !content.isEmpty()) {
+                                fullResponse.append(content);
+                                // Send each chunk as it arrives
+                                sink.next(ServerSentEvent.builder()
+                                        .event("chunk")
+                                        .data(Map.of("content", content))
+                                        .build());
                             }
                         })
                         .doOnComplete(() -> {
-                            try {
-                                // Send completion event
-                                emitter.send(SseEmitter.event()
-                                        .name("complete")
-                                        .data(Map.of("fullResponse", fullResponse.toString())));
-                                emitter.complete();
-                                logger.info("Successfully completed streaming response for question: {}", userQuestion);
-                            } catch (Exception e) {
-                                logger.error("Error completing stream: {}", e.getMessage(), e);
-                                emitter.completeWithError(e);
-                            }
+                            // Send completion event
+                            sink.next(ServerSentEvent.builder()
+                                    .event("complete")
+                                    .data(Map.of("fullResponse", fullResponse.toString()))
+                                    .build());
+                            sink.complete();
+                            logger.info("Successfully completed streaming response for question: {}", userQuestion);
                         })
                         .doOnError(error -> {
                             logger.error("Error in streaming response: {}", error.getMessage(), error);
-                            try {
-                                emitter.send(SseEmitter.event()
-                                        .name("error")
-                                        .data(Map.of("message", "Error generating response: " + error.getMessage())));
-                                emitter.complete();
-                            } catch (Exception e) {
-                                emitter.completeWithError(e);
-                            }
+                            sink.next(ServerSentEvent.builder()
+                                    .event("error")
+                                    .data(Map.of("message", "Error generating response: " + error.getMessage()))
+                                    .build());
+                            sink.error(error);
                         })
                         .subscribe();
 
             } catch (Exception e) {
                 logger.error("Error processing streaming chat question with sources: {}", e.getMessage(), e);
-                try {
-                    emitter.send(SseEmitter.event()
-                            .name("error")
-                            .data(Map.of("message", "I'm sorry, but I encountered an error while processing your question. Please try again later.")));
-                    emitter.complete();
-                } catch (Exception sendError) {
-                    emitter.completeWithError(sendError);
-                }
+                sink.next(ServerSentEvent.builder()
+                        .event("error")
+                        .data(Map.of("message", "I'm sorry, but I encountered an error while processing your question. Please try again later."))
+                        .build());
+                sink.error(e);
             }
         });
     }
