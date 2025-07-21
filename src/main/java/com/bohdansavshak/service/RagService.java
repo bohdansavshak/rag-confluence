@@ -12,27 +12,22 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.template.st.StTemplateRenderer;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.ai.vectorstore.filter.Filter;
-import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
-import org.springframework.http.codec.ServerSentEvent;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
 public class RagService {
     private static final Logger logger = LoggerFactory.getLogger(RagService.class);
-
+    private static final int DEFAULT_TOP_K = 5;
+    private static final double DEFAULT_SIMILARITY_THRESHOLD = 0.5d;
     private final VectorStore vectorStore;
     private final ChatClient chatClient;
     private final ConfluenceProperties confluenceProperties;
-
-    private static final int DEFAULT_TOP_K = 5;
-    private static final double DEFAULT_SIMILARITY_THRESHOLD = 0.5d;
 
     public RagService(VectorStore vectorStore, ChatClient.Builder chatClientBuilder, ChatMemory chatMemory, ConfluenceProperties confluenceProperties) {
         this.vectorStore = vectorStore;
@@ -48,7 +43,7 @@ public class RagService {
                         <question_answer_context>
                         ---------------------
                         
-                        Given the context information and no prior knowledge, answer the query.
+                        Given the context information, answer the query.
                         
                         Follow these rules:
                         
@@ -59,7 +54,7 @@ public class RagService {
 
         var advisor = QuestionAnswerAdvisor.builder(vectorStore)
                 .searchRequest(SearchRequest.builder().similarityThreshold(DEFAULT_SIMILARITY_THRESHOLD).topK(DEFAULT_TOP_K).build())
-//                .promptTemplate(customPromptTemplate)
+                .promptTemplate(customPromptTemplate)
                 .build();
         this.chatClient = chatClientBuilder
                 .defaultAdvisors(advisor, MessageChatMemoryAdvisor.builder(chatMemory).build())
@@ -73,11 +68,10 @@ public class RagService {
             String response = chatClient.prompt()
                     .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, userConversationId))
                     .system("""
-                            You are a helpful assistant that answers questions based on Confluence documentation.
+                            You are a helpful assistant for Sombra company employees that answers questions based on Confluence documentation.
                             Use the provided context from Confluence pages to answer the user's question.
                             
                             Guidelines:
-                            - Only use information from the provided context
                             - If the context doesn't contain enough information to answer the question, say so
                             - Be concise but comprehensive in your response
                             - Include relevant page titles or spaces when referencing information
@@ -120,7 +114,7 @@ public class RagService {
     public ChatWithSourcesResponse chatWithSources(String userQuestion) {
         try {
             logger.info("Processing chat question with sources: {}", userQuestion);
-            
+
             // Get relevant documents first
             var documents = vectorStore.similaritySearch(
                     SearchRequest.builder()
@@ -141,8 +135,8 @@ public class RagService {
         } catch (Exception e) {
             logger.error("Error processing chat question with sources: {}", e.getMessage(), e);
             return new ChatWithSourcesResponse(
-                "I'm sorry, but I encountered an error while processing your question. Please try again later.",
-                List.of()
+                    "I'm sorry, but I encountered an error while processing your question. Please try again later.",
+                    List.of()
             );
         }
     }
@@ -151,7 +145,7 @@ public class RagService {
         return Flux.create(sink -> {
             try {
                 logger.info("Processing streaming chat question with sources: {}", userQuestion);
-                
+
                 // Get relevant documents first
                 var documents = vectorStore.similaritySearch(
                         SearchRequest.builder()
@@ -173,15 +167,14 @@ public class RagService {
                 // Generate streaming response
                 String userConversationId = "001";
                 StringBuilder fullResponse = new StringBuilder();
-                
+
                 chatClient.prompt()
                         .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, userConversationId))
                         .system("""
-                                You are a helpful assistant that answers questions based on Confluence documentation.
+                                You are a helpful assistant for Sombra company employees that answers questions based on Confluence documentation.
                                 Use the provided context from Confluence pages to answer the user's question.
                                 
                                 Guidelines:
-                                - Only use information from the provided context
                                 - If the context doesn't contain enough information to answer the question, say so
                                 - Be concise but comprehensive in your response
                                 - Include relevant page titles or spaces when referencing information
@@ -235,13 +228,13 @@ public class RagService {
         String title = document.getMetadata().getOrDefault("title", "Unknown").toString();
         String spaceKey = document.getMetadata().getOrDefault("spaceKey", "").toString();
         String spaceName = document.getMetadata().getOrDefault("spaceName", "").toString();
-        
+
         // Construct Confluence URL
         String url = "";
         if (confluenceProperties.getBaseUrl() != null && !pageId.isEmpty()) {
             url = confluenceProperties.getBaseUrl() + "/pages/viewpage.action?pageId=" + pageId;
         }
-        
+
         return new SourcePage(pageId, title, spaceKey, spaceName, url);
     }
 

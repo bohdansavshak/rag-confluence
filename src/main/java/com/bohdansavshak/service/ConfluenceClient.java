@@ -70,10 +70,10 @@ public class ConfluenceClient {
                 String url = confluenceProperties.getBaseUrl() + endpoint + "?expand=body.storage,space&" + query + "&start=" + currentStart + "&limit=50";
 
                 ResponseEntity<ConfluenceResponse> response = restTemplate.exchange(
-                    url, 
-                    HttpMethod.GET, 
-                    httpEntity, 
-                    ConfluenceResponse.class
+                        url,
+                        HttpMethod.GET,
+                        httpEntity,
+                        ConfluenceResponse.class
                 );
 
                 ConfluenceResponse confluenceResponse = response.getBody();
@@ -107,10 +107,10 @@ public class ConfluenceClient {
             String url = confluenceProperties.getBaseUrl() + "/rest/api/content/" + pageId + "?expand=body.storage,space";
 
             ResponseEntity<ConfluencePage> response = restTemplate.exchange(
-                url, 
-                HttpMethod.GET, 
-                httpEntity, 
-                ConfluencePage.class
+                    url,
+                    HttpMethod.GET,
+                    httpEntity,
+                    ConfluencePage.class
             );
 
             ConfluencePage page = response.getBody();

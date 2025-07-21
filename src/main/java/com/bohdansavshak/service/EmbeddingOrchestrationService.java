@@ -78,8 +78,8 @@ public class EmbeddingOrchestrationService {
             if (spaceKey != null && !spaceKey.trim().isEmpty()) {
                 // Filter pages for specific space
                 pages = allPages.stream()
-                    .filter(page -> page.getSpace() != null && spaceKey.equals(page.getSpace().getKey()))
-                    .toList();
+                        .filter(page -> page.getSpace() != null && spaceKey.equals(page.getSpace().getKey()))
+                        .toList();
             } else {
                 pages = allPages;
             }

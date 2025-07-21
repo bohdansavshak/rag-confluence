@@ -38,6 +38,16 @@ public class DocumentEmbedding {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    public static DocumentEmbedding fromDocument(Document document, String confluencePageId, String title, String spaceKey, String spaceName) {
+        DocumentEmbedding embedding = new DocumentEmbedding();
+        embedding.setConfluencePageId(confluencePageId);
+        embedding.setTitle(title);
+        embedding.setContent(document.getText());
+        embedding.setSpaceKey(spaceKey);
+        embedding.setSpaceName(spaceName);
+        return embedding;
+    }
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -51,23 +61,13 @@ public class DocumentEmbedding {
 
     public Document toDocument() {
         return new Document(content, Map.of(
-            "id", confluencePageId,
-            "title", title,
-            "spaceKey", spaceKey,
-            "spaceName", spaceName,
-            "createdAt", createdAt.toString(),
-            "updatedAt", updatedAt.toString()
+                "id", confluencePageId,
+                "title", title,
+                "spaceKey", spaceKey,
+                "spaceName", spaceName,
+                "createdAt", createdAt.toString(),
+                "updatedAt", updatedAt.toString()
         ));
-    }
-
-    public static DocumentEmbedding fromDocument(Document document, String confluencePageId, String title, String spaceKey, String spaceName) {
-        DocumentEmbedding embedding = new DocumentEmbedding();
-        embedding.setConfluencePageId(confluencePageId);
-        embedding.setTitle(title);
-        embedding.setContent(document.getText());
-        embedding.setSpaceKey(spaceKey);
-        embedding.setSpaceName(spaceName);
-        return embedding;
     }
 
     // Getters and setters
